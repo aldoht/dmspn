@@ -105,3 +105,76 @@ export async function getTransaccionesDelGrupo(rfcs: string[]) {
     [...rfcs, ...rfcs],
   );
 }
+
+type EmpresaPorRfcRow = {
+  RFC_EMPRESA: string;
+  RAZON_SOCIAL: string;
+  GIRO: string;
+  DOMICILIO_REGISTRADO: string;
+  SCORE_TOTAL: number | null;
+};
+
+export async function getEmpresaPorRfc(rfc: string) {
+  const rows = await executeQuery<EmpresaPorRfcRow>(
+    `
+    SELECT
+      ea.rfc_empresa           AS RFC_EMPRESA,
+      ea.razon_social           AS RAZON_SOCIAL,
+      ea.giro                  AS GIRO,
+      ea.domicilio_registrado    AS DOMICILIO_REGISTRADO,
+      f.score_total            AS SCORE_TOTAL
+    FROM DIM_EMPRESA_ACTUAL ea
+    LEFT JOIN FACT_FEATURES_RIESGO f
+      ON f.empresa_sk = ea.empresa_sk
+      AND f.periodo = (
+        SELECT MAX(periodo) FROM FACT_FEATURES_RIESGO
+        WHERE empresa_sk = ea.empresa_sk
+      )
+    WHERE ea.rfc_empresa = ?
+    `,
+    [rfc],
+  );
+  return rows[0] ?? null;
+}
+
+type DuenoRow = {
+  RFC_PERSONA: string;
+  NOMBRE_COMPLETO: string;
+  PCT_PARTICIPACION: number;
+};
+
+export async function getDuenosDeEmpresa(rfc: string) {
+  return executeQuery<DuenoRow>(
+    `
+    SELECT
+      p.rfc_persona      AS RFC_PERSONA,
+      p.nombre_completo    AS NOMBRE_COMPLETO,
+      b.pct_participacion   AS PCT_PARTICIPACION
+    FROM BRIDGE_EMPRESA_DUENO b
+    JOIN DIM_PERSONA p ON p.persona_sk = b.persona_sk
+    JOIN DIM_EMPRESA_ACTUAL ea ON ea.empresa_sk = b.empresa_sk
+    WHERE ea.rfc_empresa = ? AND b.fecha_fin IS NULL
+    ORDER BY b.pct_participacion DESC
+    `,
+    [rfc],
+  );
+}
+
+type ActividadRow = { NUM_TRANSACCIONES: number; MONTO_TOTAL: number };
+
+export async function getActividadReciente(rfc: string, horas = 72) {
+  const rows = await executeQuery<ActividadRow>(
+    `
+    SELECT
+      COUNT(*)                AS NUM_TRANSACCIONES,
+      COALESCE(SUM(t.monto), 0) AS MONTO_TOTAL
+    FROM FACT_TRANSACCION t
+    JOIN DIM_EMPRESA eo ON eo.empresa_sk = t.empresa_origen_sk
+    JOIN DIM_EMPRESA ed ON ed.empresa_sk = t.empresa_destino_sk
+    WHERE (eo.rfc_empresa = ? OR ed.rfc_empresa = ?)
+      AND t.fecha_hora >= DATEADD(hour, -?, CURRENT_TIMESTAMP())
+    `,
+    [rfc, rfc, horas],
+  );
+  return rows[0] ?? { NUM_TRANSACCIONES: 0, MONTO_TOTAL: 0 };
+}
