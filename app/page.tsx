@@ -1,3 +1,4 @@
+import GraphPreviewPage from "@/features/graph/components/GraphPreviewPage";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -7,7 +8,10 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <div className="bg-background w-full h-full">
-      <h1 className="text-3xl font-display">Relation Graph</h1>
+      <h1 className="text-3xl font-display m-3">
+        Activity in the last 72 hours
+      </h1>
+      <GraphPreviewPage />
     </div>
   );
 }

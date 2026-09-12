@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemeToggle } from "./ThemeToggle";
 
 type MenuItem = {
   name: string;
@@ -28,7 +29,7 @@ export default function Sidebar() {
 
   return (
     <div className="flex h-full rounded-r-xl w-56 flex-col border-r border-border bg-surface">
-      <ul className="flex flex-col gap-3 p-2">
+      <ul className="flex flex-col gap-3 p-2 h-full">
         <li className="flex items-center gap-2 px-3 py-2 text-2xl font-display">
           <ScanHeart />
           DMSPN
@@ -52,6 +53,9 @@ export default function Sidebar() {
             </li>
           );
         })}
+        <li className="mt-auto">
+          <ThemeToggle />
+        </li>
       </ul>
     </div>
   );
