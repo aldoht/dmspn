@@ -3,12 +3,8 @@
 import dynamic from "next/dynamic";
 import { useState, useCallback } from "react";
 import { GroupDetailGraph } from "@/features/graph/components/GroupDetailGraph";
-import {
-  mockEmpresasOverview,
-  mockTransaccionesOverview,
-  mockEmpresasDetalle,
-  mockTransaccionesDetalle,
-} from "@/features/graph/mockData";
+import { Empresa, Transaccion } from "@/lib/types";
+import { useGrafoOverview } from "../hooks/useGraphOverview";
 
 const GraphCanvas = dynamic(
   () =>
@@ -27,6 +23,11 @@ const GraphCanvas = dynamic(
 
 export default function GraphPreviewPage() {
   const [vista, setVista] = useState<"overview" | "detail">("overview");
+  const [empresasGrupo, setEmpresasGrupo] = useState<Empresa[]>([]);
+  const [transaccionesGrupo, setTransaccionesGrupo] = useState<Transaccion[]>(
+    [],
+  );
+  const { nodes, edges, loading, error, refetch } = useGrafoOverview(240);
   const commonClasses =
     "rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:text-white hover:bg-brand hover:cursor-pointer";
 
@@ -34,9 +35,21 @@ export default function GraphPreviewPage() {
     console.log("Click on enterprise:", id);
   }, []);
 
-  const handleGroupClick = useCallback((groupId: number, nodeIds: string[]) => {
-    console.log("Click on group:", groupId, nodeIds);
-  }, []);
+  const handleGroupClick = useCallback(
+    async (groupId: number, nodeIds: string[]) => {
+      const res = await fetch("/api/graph/group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rfcs: nodeIds }),
+      });
+      const { empresas, transacciones } = await res.json();
+      console.log(empresas, transacciones);
+      setEmpresasGrupo(empresas);
+      setTransaccionesGrupo(transacciones);
+      setVista("detail");
+    },
+    [],
+  );
 
   const handleTransactionClick = useCallback((transactionId: string) => {
     console.log("Click on transaction:", transactionId);
@@ -53,7 +66,7 @@ export default function GraphPreviewPage() {
               : "bg-surface-raised text-text-secondary"
           }`}
         >
-          Overview (72h)
+          Overview (10d)
         </button>
         <button
           onClick={() => setVista("detail")}
@@ -70,15 +83,15 @@ export default function GraphPreviewPage() {
       <div className="flex-1">
         {vista === "overview" ? (
           <GraphCanvas
-            nodes={mockEmpresasOverview}
-            edges={mockTransaccionesOverview}
+            nodes={nodes}
+            edges={edges}
             onNodeClick={handleNodeClick}
             onGroupClick={handleGroupClick}
           />
         ) : (
           <GroupDetailGraph
-            empresas={mockEmpresasDetalle}
-            transacciones={mockTransaccionesDetalle}
+            empresas={empresasGrupo}
+            transacciones={transaccionesGrupo}
             onTransaccionClick={handleTransactionClick}
           />
         )}
