@@ -1,0 +1,3 @@
+{"level":"INFO","message":"[10:11:18.978 AM]: Trying to initialize Easy Logging"}
+{"level":"INFO","message":"[10:11:18.987 AM]: No client config file found in default directories"}
+{"level":"INFO","message":"[10:11:18.987 AM]: Easy Logging is disabled as no config has been found"}
