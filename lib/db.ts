@@ -13,7 +13,7 @@ function createConnection() {
     username: process.env.SNOWFLAKE_USER!,
     password: process.env.SNOWFLAKE_PASSWORD!,
     database: "DMSPN",
-    schema: "PUBLIC",
+    schema: "COMPLIANCE",
     warehouse: "COMPUTE_WH",
   });
 }

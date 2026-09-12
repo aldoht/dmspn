@@ -15,10 +15,10 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="h-9 w-9 rounded-md border border-border bg-surface text-text-primary hover:bg-surface-raised"
+      className="h-9 w-full flex gap-3 items-center justify-center rounded-md border border-border bg-surface text-text-primary hover:bg-surface-raised hover:cursor-pointer"
       aria-label="Change theme"
     >
-      {theme === "dark" ? "☀️" : "🌙"}
+      {`${theme === "dark" ? "☀️" : "🌙"}`}
     </button>
   );
 }
