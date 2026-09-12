@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
-import Graph from "graphology";
+import Graph, { UndirectedGraph } from "graphology";
 import { circular } from "graphology-layout";
 import forceAtlas2 from "graphology-layout-forceatlas2";
 import louvain from "graphology-communities-louvain";
@@ -37,7 +37,7 @@ export function GraphCanvas({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const graph = new Graph();
+    const graph = new UndirectedGraph();
 
     nodes.forEach((n) => {
       const label = n.label.length > 28 ? `${n.label.slice(0, 26)}…` : n.label;
@@ -45,9 +45,21 @@ export function GraphCanvas({
     });
 
     edges.forEach((e) => {
-      if (!graph.hasEdge(e.source, e.target)) {
+      if (graph.hasEdge(e.source, e.target)) {
+        const prevWeight =
+          graph.getEdgeAttribute(e.source, e.target, "weight") ?? 0;
+        graph.setEdgeAttribute(
+          e.source,
+          e.target,
+          "weight",
+          prevWeight + (e.weight ?? 1),
+        );
+        if (e.sospechosa) {
+          graph.setEdgeAttribute(e.source, e.target, "sospechosa", true);
+        }
+      } else {
         graph.addEdge(e.source, e.target, {
-          weight: e.weight ?? 5,
+          weight: e.weight ?? 1,
           sospechosa: e.sospechosa ?? false,
         });
       }
