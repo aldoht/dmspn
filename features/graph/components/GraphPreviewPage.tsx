@@ -31,14 +31,15 @@ export default function GraphPreviewPage() {
   const [transaccionesGrupo, setTransaccionesGrupo] = useState<Transaccion[]>(
     [],
   );
+  const [mapaComunidades, setMapaComunidades] = useState<
+    Record<string, number>
+  >({});
   const { nodes, edges, loading, error, refetch } = useGrafoOverview(240);
   const commonClasses =
     "rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:text-white hover:bg-brand hover:cursor-pointer";
 
-  const handleNodeClick = useCallback((id: string) => {
-    setSelectedEnterprise(null);
-    console.log("Click on enterprise:", id);
-    setSelectedEnterprise(id);
+  const handleNodeClick = useCallback((rfc: string) => {
+    setSelectedEnterprise(rfc);
   }, []);
 
   const handleGroupClick = useCallback(
@@ -56,6 +57,22 @@ export default function GraphPreviewPage() {
     },
     [],
   );
+
+  const handleGroupCalculation = useCallback((map: Record<string, number>) => {
+    setMapaComunidades(map);
+  }, []);
+
+  const findGroup = useCallback(async (rfc: string | null) => {
+    if (!rfc) {
+      return;
+    }
+    handleGroupClick(
+      mapaComunidades[rfc],
+      Object.keys(mapaComunidades).filter(
+        (r) => mapaComunidades[r] === mapaComunidades[rfc],
+      ),
+    );
+  }, []);
 
   const handleTransactionClick = useCallback((transactionId: string) => {
     console.log("Click on transaction:", transactionId);
@@ -104,11 +121,12 @@ export default function GraphPreviewPage() {
                 edges={edges}
                 onNodeClick={handleNodeClick}
                 onGroupClick={handleGroupClick}
+                onCalculateGroups={handleGroupCalculation}
               />
               <EnterpriseDetailPanel
                 rfc={selectedEnterprise}
                 onClose={() => setSelectedEnterprise(null)}
-                onVerGrupo={() => {}} // TODO: logic for getting group
+                onVerGrupo={() => findGroup(selectedEnterprise)}
                 onSolicitarAgente={() => {}} // TODO: logic for agent workflow
               />
             </>

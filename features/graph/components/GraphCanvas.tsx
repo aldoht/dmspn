@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
-import Graph, { UndirectedGraph } from "graphology";
+import { UndirectedGraph } from "graphology";
 import { circular } from "graphology-layout";
 import forceAtlas2 from "graphology-layout-forceatlas2";
 import louvain from "graphology-communities-louvain";
@@ -14,6 +14,7 @@ type GraphCanvasProps = {
   edges: TransaccionEdge[];
   onNodeClick?: (nodeId: string) => void;
   onGroupClick?: (groupId: number, nodeIds: string[]) => void;
+  onCalculateGroups?: (map: Record<string, number>) => void;
 };
 
 const GROUP_COLORS = [
@@ -30,6 +31,7 @@ export function GraphCanvas({
   edges,
   onNodeClick,
   onGroupClick,
+  onCalculateGroups,
 }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
@@ -70,6 +72,16 @@ export function GraphCanvas({
     forceAtlas2.assign(graph, { iterations: 30 });
 
     louvain.assign(graph);
+
+    if (onCalculateGroups) {
+      const comunidades: Record<string, number> = {};
+
+      graph.forEachNode((node, attrs) => {
+        comunidades[node] = attrs.community as number;
+      });
+
+      onCalculateGroups(comunidades);
+    }
 
     graph.forEachNode((node, attrs) => {
       const community = (attrs.community as number) ?? 0;
