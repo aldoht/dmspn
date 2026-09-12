@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <div className="bg-background">
+    <div className="bg-background w-full h-full">
       <p>Ola</p>
     </div>
   );

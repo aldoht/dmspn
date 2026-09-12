@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Source_Serif_4, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
+import Sidebar from "@/components/layout/Sidebar";
 
 const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
@@ -31,11 +32,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="h-full">
       <body
-        className={`${sourceSerif.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} font-sans`}
+        className={`${sourceSerif.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} h-full font-sans`}
       >
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <div className="flex h-full">
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto pl-5 pt-5">{children}</main>
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );
