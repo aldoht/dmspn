@@ -59,7 +59,7 @@ export function GraphCanvas({
         }
       } else {
         graph.addEdge(e.source, e.target, {
-          weight: e.weight ?? 1,
+          weight: e.weight ?? 5,
           sospechosa: e.sospechosa ?? false,
         });
       }
@@ -110,7 +110,11 @@ export function GraphCanvas({
     });
 
     if (onNodeClick) {
-      sigma.on("clickNode", ({ node }) => onNodeClick(node));
+      sigma.on("clickNode", ({ node, event }) => {
+        if (!event.original.shiftKey) {
+          onNodeClick(node);
+        }
+      });
     }
 
     if (onGroupClick) {

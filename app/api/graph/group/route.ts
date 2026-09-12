@@ -2,16 +2,7 @@ import {
   getEmpresasDelGrupo,
   getTransaccionesDelGrupo,
 } from "@/features/graph/queries";
-
-function scoreARiesgo(
-  score: number | null,
-): "critical" | "high" | "medium" | "low" {
-  if (score === null) return "low";
-  if (score >= 80) return "critical";
-  if (score >= 60) return "high";
-  if (score >= 40) return "medium";
-  return "low";
-}
+import { scoreToRisk } from "@/features/graph/utils/scoreToRisk";
 
 export async function POST(request: Request) {
   const { rfcs } = (await request.json()) as { rfcs: string[] };
@@ -32,7 +23,7 @@ export async function POST(request: Request) {
     const empresas = empresasRows.map((e) => ({
       id: e.RFC_EMPRESA,
       nombre: e.RAZON_SOCIAL,
-      riesgo: scoreARiesgo(e.SCORE_TOTAL),
+      riesgo: scoreToRisk(e.SCORE_TOTAL),
     }));
 
     const transacciones = transaccionesRows.map((t) => ({
