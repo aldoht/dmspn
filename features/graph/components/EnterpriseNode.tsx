@@ -1,11 +1,7 @@
+import { EmpresaNodeData, RiesgoLevel } from "@/lib/types";
 import { Handle, Position } from "@xyflow/react";
 
-export type EmpresaNodeData = {
-  nombre: string;
-  riesgo: "critical" | "high" | "medium" | "low" | "resolved";
-};
-
-const RISK_STYLES: Record<EmpresaNodeData["riesgo"], string> = {
+const RISK_STYLES: Record<RiesgoLevel, string> = {
   critical: "bg-risk-critical-bg text-risk-critical border-risk-critical",
   high: "bg-risk-high-bg text-risk-high border-risk-high",
   medium: "bg-risk-medium-bg text-risk-medium border-risk-medium",

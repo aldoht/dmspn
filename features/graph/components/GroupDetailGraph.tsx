@@ -4,21 +4,8 @@ import { useMemo } from "react";
 import { ReactFlow, type Node, type Edge } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useForceLayout } from "../hooks/useForceLayout";
-import { EmpresaNode, type EmpresaNodeData } from "./EnterpriseNode";
-
-export type Empresa = {
-  id: string;
-  nombre: string;
-  riesgo: EmpresaNodeData["riesgo"];
-};
-
-export type Transaccion = {
-  id: string;
-  origenId: string;
-  destinoId: string;
-  monto: number;
-  fecha: string;
-};
+import { EmpresaNode } from "./EnterpriseNode";
+import { Empresa, EmpresaNodeData, Transaccion } from "@/lib/types";
 
 type GroupDetailGraphProps = {
   empresas: Empresa[];

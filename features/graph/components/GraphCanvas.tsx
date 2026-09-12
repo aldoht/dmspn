@@ -7,18 +7,7 @@ import { circular } from "graphology-layout";
 import forceAtlas2 from "graphology-layout-forceatlas2";
 import louvain from "graphology-communities-louvain";
 import Sigma from "sigma";
-
-export type EmpresaNode = {
-  id: string;
-  label: string;
-};
-
-export type TransaccionEdge = {
-  source: string;
-  target: string;
-  weight?: number;
-  sospechosa?: boolean;
-};
+import { EmpresaNode, TransaccionEdge } from "@/lib/types";
 
 type GraphCanvasProps = {
   nodes: EmpresaNode[];

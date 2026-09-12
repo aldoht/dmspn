@@ -1,5 +1,9 @@
-import type { EmpresaNode, TransaccionEdge } from "./components/GraphCanvas";
-import type { Empresa, Transaccion } from "./components/GroupDetailGraph";
+import type {
+  EmpresaNode,
+  TransaccionEdge,
+  Empresa,
+  Transaccion,
+} from "../../lib/types";
 
 // ============================================================
 // MOCK: Vista general (últimas 72h) — para <GraphCanvas />
