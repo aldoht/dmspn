@@ -15,7 +15,7 @@ export type OutlierResultado = {
 // "ok" = normal, "observar" = revisión manual, "alerta" = señal fuerte.
 export type NivelAlerta = "ok" | "observar" | "alerta";
 
-// Resultado automático del Módulo 1: lo que el agente calcula por
+// Resultado automático del Módulo 1: lo que el agente calcula por ff
 // empresa sin pasar fechas y el grafo muestra por nodo.
 // crecimientoMensual es tanto por uno (2.5 = +250%; Infinity = sin base previa).
 // Nota JSON: Infinity se serializa como null; el grafo debe pintar
