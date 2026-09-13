@@ -5,6 +5,15 @@ export type EmpresaNode = {
   label: string;
 };
 
+export type EmpresaActualRow = {
+  empresaSk: number;
+  rfc: string;
+  razonSocial: string;
+  giro: string;
+  domicilio: string;
+  fechaConstitucion: string;
+};
+
 export type TransaccionEdge = {
   source: string; // RFC origen
   target: string; // RFC destino
