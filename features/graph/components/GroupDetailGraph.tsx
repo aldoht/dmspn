@@ -20,17 +20,18 @@ type GroupDetailGraphProps = {
   transacciones: Transaccion[];
   onTransaccionClick?: (transaccionId: string) => void;
   onVerTransaccionesAgrupadas?: (transacciones: Transaccion[]) => void;
+  maxAristasParalelas?: number;
 };
 
 const nodeTypes = { empresa: EmpresaNode };
 const edgeTypes: EdgeTypes = { transaccion: TransaccionEdge };
-const MAX_ARISTAS_PARALELAS = 3;
 
 export function GroupDetailGraph({
   empresas,
   transacciones,
   onTransaccionClick,
   onVerTransaccionesAgrupadas,
+  maxAristasParalelas = 3,
 }: GroupDetailGraphProps) {
   const nodeIds = useMemo(() => empresas.map((e) => e.id), [empresas]);
   const links = useMemo(
@@ -68,7 +69,7 @@ export function GroupDetailGraph({
     grupos.forEach((txns, key) => {
       const [origenId, destinoId] = key.split("->");
 
-      if (txns.length > MAX_ARISTAS_PARALELAS) {
+      if (txns.length > maxAristasParalelas) {
         const montoTotal = txns.reduce((sum, t) => sum + t.monto, 0);
         resultado.push({
           id: `grupo-${key}`,
