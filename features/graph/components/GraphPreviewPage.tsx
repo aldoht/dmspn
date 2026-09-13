@@ -55,13 +55,22 @@ export default function GraphPreviewPage() {
 
   const handleGroupClick = useCallback(
     async (groupId: number, nodeIds: string[]) => {
+      // Sin RFCs no hay nada que pedir: evita el 400 del endpoint.
+      if (!nodeIds?.length) {
+        return;
+      }
       setSelectedEnterprise(null);
       const res = await fetch("/api/graph/group", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rfcs: nodeIds }),
       });
-      const { empresas, transacciones } = await res.json();
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}: ${res.statusText}`);
+      }
+      // Defaults []: si el servidor responde error, el estado nunca queda
+      // undefined y el botón se deshabilita en vez de crashear el render.
+      const { empresas = [], transacciones = [] } = await res.json();
       setEmpresasGrupo(empresas);
       setTransaccionesGrupo(transacciones);
       setVista("detail");
@@ -73,17 +82,27 @@ export default function GraphPreviewPage() {
     setMapaComunidades(map);
   }, []);
 
-  const findGroup = useCallback(async (rfc: string | null) => {
-    if (!rfc) {
-      return;
-    }
-    handleGroupClick(
-      mapaComunidades[rfc],
-      Object.keys(mapaComunidades).filter(
-        (r) => mapaComunidades[r] === mapaComunidades[rfc],
-      ),
-    );
-  }, []);
+  const findGroup = useCallback(
+    async (rfc: string | null) => {
+      if (!rfc) {
+        return;
+      }
+      // El mapa de comunidades llega tras el layout: sin groupId válido
+      // no se pide nada (evita POST con rfcs: [] -> 400). Deps reales
+      // (antes [] dejaba el mapa inicial vacío para siempre).
+      const groupId = mapaComunidades[rfc];
+      if (groupId === undefined) {
+        return;
+      }
+      handleGroupClick(
+        groupId,
+        Object.keys(mapaComunidades).filter(
+          (r) => mapaComunidades[r] === groupId,
+        ),
+      );
+    },
+    [mapaComunidades, handleGroupClick],
+  );
 
   const handleEdgeClick = useCallback(async (rfcA: string, rfcB: string) => {
     setSelectedEnterprise(null);
@@ -92,7 +111,10 @@ export default function GraphPreviewPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rfcs: [rfcA, rfcB] }),
     });
-    const { empresas, transacciones } = await res.json();
+    if (!res.ok) {
+      throw new Error(`Error ${res.status}: ${res.statusText}`);
+    }
+    const { empresas = [], transacciones = [] } = await res.json();
     setRelationEnterprises(empresas as Empresa[]);
     setRelationTransactions(transacciones as Transaccion[]);
   }, []);

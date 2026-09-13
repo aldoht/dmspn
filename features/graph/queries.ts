@@ -1,6 +1,10 @@
 import { executeQuery } from "@/lib/db";
 
-type EmpresaRow = { RFC_EMPRESA: string; RAZON_SOCIAL: string };
+type EmpresaRow = {
+  RFC_EMPRESA: string;
+  RAZON_SOCIAL: string;
+  PAIS_REGISTRADO: string | null;
+};
 
 export async function getEmpresasConMovimientoReciente(horas = 72) {
   return executeQuery<EmpresaRow>(
@@ -15,12 +19,14 @@ export async function getEmpresasConMovimientoReciente(horas = 72) {
       UNION
       SELECT DISTINCT empresa_destino_sk FROM transacciones_recientes
     )
-    SELECT DISTINCT e.rfc_empresa AS RFC_EMPRESA, e.razon_social AS RAZON_SOCIAL
+    SELECT DISTINCT ea.rfc_empresa AS RFC_EMPRESA, ea.razon_social AS RAZON_SOCIAL,
+      gr.codigo_pais AS PAIS_REGISTRADO
     FROM empresas_relevantes er
-    -- DIM_EMPRESA_ACTUAL no existe: versión vigente directo en DIM_EMPRESA.
-    JOIN DIM_EMPRESA e
-      ON e.empresa_sk = er.empresa_sk
-     AND e.es_version_actual = TRUE
+    JOIN DIM_EMPRESA e ON e.empresa_sk = er.empresa_sk
+    JOIN DIM_EMPRESA_ACTUAL ea ON ea.rfc_empresa = e.rfc_empresa
+    -- País registrado (Módulo 4 Geografía): DIM_EMPRESA trae GEOGRAFIA_SK
+    -- confirmado por DESCRIBE; se usa la versión del FACT (txs recientes).
+    LEFT JOIN DIM_GEOGRAFIA gr ON gr.geografia_sk = e.geografia_sk
     `,
     [horas],
   );
@@ -85,6 +91,13 @@ type TransaccionDetalleRow = {
   DESTINO_ID: string;
   MONTO: number;
   FECHA: string;
+  // Solo las queries con JOIN a DIM_GEOGRAFIA los devuelven
+  // (getTransaccionesDelGrupo no: ahí llegan undefined).
+  PAIS?: string | null;
+  ALTO_RIESGO?: boolean;
+  SIN_REGULACION?: boolean;
+  // Solo con JOIN a DIM_CUENTA (getTransaccionesDelGrupo no).
+  CUENTA_DESTINO?: string | null;
 };
 
 // Detalle individual de transacciones recientes para el overview + Capa 1.
@@ -93,7 +106,6 @@ type TransaccionDetalleRow = {
 // z-score por tx, crecimiento por ventanas) y eso es imposible desde totales.
 // Pedir el DOBLE de horas que la ventana a analizar: el crecimiento compara
 // ventana actual vs previa y sin datos en la previa todo sale Infinity.
-// Evita DIM_EMPRESA_ACTUAL (no existe): versión vigente vía ES_VERSION_ACTUAL.
 export async function getTransaccionesRecientesDetalle(horas = 1440) {
   return executeQuery<TransaccionDetalleRow>(
     `
@@ -102,7 +114,11 @@ export async function getTransaccionesRecientesDetalle(horas = 1440) {
       eo.rfc_empresa    AS ORIGEN_ID,
       ed.rfc_empresa    AS DESTINO_ID,
       t.monto          AS MONTO,
-      t.fecha          AS FECHA
+      t.fecha          AS FECHA,
+      g.codigo_pais             AS PAIS,
+      g.es_alto_riesgo_gafi     AS ALTO_RIESGO,
+      NOT g.tiene_regulacion_formal AS SIN_REGULACION,
+      cd.numero_cuenta          AS CUENTA_DESTINO
     FROM FACT_TRANSACCION t
     JOIN DIM_EMPRESA eo
       ON eo.empresa_sk = t.empresa_origen_sk
@@ -110,6 +126,13 @@ export async function getTransaccionesRecientesDetalle(horas = 1440) {
     JOIN DIM_EMPRESA ed
       ON ed.empresa_sk = t.empresa_destino_sk
      AND ed.es_version_actual = TRUE
+    -- Geografía de la tx (Módulo 4): país + flags GAFI/regulación.
+    -- Columnas confirmadas por DESCRIBE de DIM_GEOGRAFIA.
+    JOIN DIM_GEOGRAFIA g ON g.geografia_sk = t.geografia_sk
+    -- Cuenta destino (Módulo 5 Contrapartes): LEFT para no perder la tx
+    -- si no tiene cuenta (la métrica excluye nulls, documentado).
+    -- Columnas confirmadas por preview de DIM_CUENTA.
+    LEFT JOIN DIM_CUENTA cd ON cd.cuenta_sk = t.cuenta_destino_sk
     WHERE t.fecha_hora >= DATEADD(hour, -?, CURRENT_TIMESTAMP())
     ORDER BY t.fecha_hora
     LIMIT 5000
