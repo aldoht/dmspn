@@ -74,8 +74,15 @@ export default function GraphPreviewPage() {
     );
   }, []);
 
-  const handleTransactionClick = useCallback((transactionId: string) => {
-    console.log("Click on transaction:", transactionId);
+  const handleEdgeClick = useCallback(async (rfcA: string, rfcB: string) => {
+    console.log("Click on edge:", rfcA, rfcB);
+    const res = await fetch("/api/graph/group", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rfcs: [rfcA, rfcB] }),
+    });
+    const { empresas, transacciones } = await res.json();
+    console.log(empresas, transacciones);
   }, []);
 
   return (
@@ -121,6 +128,7 @@ export default function GraphPreviewPage() {
                 edges={edges}
                 onNodeClick={handleNodeClick}
                 onGroupClick={handleGroupClick}
+                onEdgeClick={handleEdgeClick}
                 onCalculateGroups={handleGroupCalculation}
               />
               <EnterpriseDetailPanel
