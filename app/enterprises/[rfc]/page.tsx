@@ -8,14 +8,8 @@ import {
 } from "@/features/enterprises/components/EmpresaChartSections";
 import { EgoGraphSection } from "@/features/enterprises/components/EgoGraphSection";
 import { Card } from "@/components/ui/Card";
+import { ChartSkeleton } from "@/components/ui/ChartSkeleton";
 
-function ChartSkeleton() {
-  return (
-    <div className="flex h-50 items-center justify-center text-sm text-text-muted">
-      Loading...
-    </div>
-  );
-}
 
 export default async function EmpresaDetailPage({
   params,
