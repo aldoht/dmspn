@@ -21,7 +21,7 @@ const menuItems: MenuItem[] = [
   { name: "Graph", href: "/", icon: Hexagon },
   { name: "Alerts", href: "/alerts", icon: AlertTriangle },
   { name: "Enterprises", href: "/enterprises", icon: Building },
-  { name: "Agent", href: "/agent", icon: Bot },
+  { name: "Checker", href: "/agent", icon: Bot },
 ];
 
 export default function Sidebar() {

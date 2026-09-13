@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { EmpresaActualRow } from "@/lib/types";
 
 function formatearFecha(fecha: string) {
-  return new Date(fecha).toLocaleDateString("es-MX", {
+  return new Date(fecha).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -31,16 +31,16 @@ export function EnterpriseTable({
               RFC
             </th>
             <th className="px-4 py-3 text-left font-medium text-text-secondary">
-              Razón social
+              Legal name
             </th>
             <th className="px-4 py-3 text-left font-medium text-text-secondary">
-              Giro
+              Business type
             </th>
             <th className="px-4 py-3 text-left font-medium text-text-secondary">
-              Domicilio
+              Address
             </th>
             <th className="px-4 py-3 text-left font-medium text-text-secondary">
-              Constitución
+              Founded
             </th>
           </tr>
         </thead>
@@ -57,7 +57,7 @@ export function EnterpriseTable({
                 <Link
                   href={`/enterprises/${enterprise.rfc}`}
                   className="absolute inset-0 z-0"
-                  aria-label={`Ver detalle de ${enterprise.razonSocial}`}
+                  aria-label={`View details for ${enterprise.razonSocial}`}
                 />
                 <span className="relative z-10">{enterprise.rfc}</span>
               </td>
@@ -88,7 +88,7 @@ export function EnterpriseTable({
       </table>
 
       <p className="sr-only">
-        Cada fila enlaza al detalle de la empresa correspondiente.
+        Each row links to the corresponding business detail.
       </p>
     </div>
   );

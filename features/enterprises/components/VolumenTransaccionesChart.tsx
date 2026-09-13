@@ -57,10 +57,10 @@ export function VolumenTransaccionesChart({ data }: Props) {
             borderRadius: 6,
             fontSize: 12,
           }}
-          formatter={(value: number, name: string) =>
+          formatter={(value, name) =>
             name === "montoTotal"
-              ? [`$${value.toLocaleString()}`, "Monto"]
-              : [value, "Transacciones"]
+              ? [`$${Number(value ?? 0).toLocaleString()}`, "Amount"]
+              : [value ?? 0, "Transactions"]
           }
         />
         <Bar dataKey="numTransacciones" fill={c.bar} radius={[4, 4, 0, 0]} />

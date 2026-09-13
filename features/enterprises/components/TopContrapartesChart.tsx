@@ -69,7 +69,7 @@ export function TopContrapartesChart({ data }: Props) {
             borderRadius: 6,
             fontSize: 12,
           }}
-          formatter={(value: number) => [`$${value.toLocaleString()}`, "Monto"]}
+          formatter={(value) => [`$${Number(value ?? 0).toLocaleString()}`, "Amount"]}
         />
         <Bar dataKey="monto" fill={c.bar} radius={[0, 4, 4, 0]} />
       </BarChart>

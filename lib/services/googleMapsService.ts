@@ -46,7 +46,7 @@ export async function consultarGoogleMaps(nombreComercio: string, ciudad: string
     return {
       encontrado: true,
       nombre: lugar.displayName?.text || nombreComercio,
-      direccion: lugar.formattedAddress || 'Dirección no disponible',
+      direccion: lugar.formattedAddress || 'Address not available',
       rating: lugar.rating || 0,
       userRatingCount: lugar.userRatingCount || 0,
       businessStatus: lugar.businessStatus || 'OPERATIONAL',
