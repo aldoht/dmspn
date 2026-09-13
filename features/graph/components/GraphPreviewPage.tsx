@@ -88,7 +88,7 @@ export default function GraphPreviewPage() {
   // precarga el input y ejecuta la auditoría sin pedirlo de nuevo.
   const handleSolicitarAgente = useCallback(
     (rfc: string) => {
-      router.push(`/agent?rfc=${encodeURIComponent(rfc)}`);
+      router.push(`/checker?rfc=${encodeURIComponent(rfc)}`);
     },
     [router],
   );

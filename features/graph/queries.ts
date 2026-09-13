@@ -234,33 +234,3 @@ export async function getActividadReciente(rfc: string, horas = 72) {
   );
   return rows[0] ?? { NUM_TRANSACCIONES: 0, MONTO_TOTAL: 0 };
 }
-
-// Detalle individual de transacciones recientes para el overview + Capa 1.
-// A diferencia de getRelacionesRecientes (agregados COUNT/SUM), aquí se
-// devuelve tx por tx porque el Módulo 1 calcula distribución (desviación,
-// z-score por tx, crecimiento por ventanas) y eso es imposible desde totales.
-// Pedir el DOBLE de horas que la ventana a analizar: el crecimiento compara
-// ventana actual vs previa y sin datos en la previa todo sale Infinity.
-export async function getTransaccionesRecientesDetalle(horas = 1440) {
-  return executeQuery<TransaccionDetalleRow>(
-    `
-    SELECT
-      t.transaccion_sk AS ID,
-      eo.rfc_empresa    AS ORIGEN_ID,
-      ed.rfc_empresa    AS DESTINO_ID,
-      t.monto          AS MONTO,
-      t.fecha          AS FECHA
-    FROM FACT_TRANSACCION t
-    JOIN DIM_EMPRESA eo
-      ON eo.empresa_sk = t.empresa_origen_sk
-     AND eo.es_version_actual = TRUE
-    JOIN DIM_EMPRESA ed
-      ON ed.empresa_sk = t.empresa_destino_sk
-     AND ed.es_version_actual = TRUE
-    WHERE t.fecha_hora >= DATEADD(hour, -?, CURRENT_TIMESTAMP())
-    ORDER BY t.fecha_hora
-    LIMIT 5000
-    `,
-    [horas],
-  );
-}
