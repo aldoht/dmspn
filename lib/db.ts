@@ -15,7 +15,7 @@ function createConnection() {
     database: "DMSPN",
     schema: "COMPLIANCE",
     warehouse: "COMPUTE_WH",
-    role: "SYSADMIN",
+    role: process.env.SNOWFLAKE_ROLE!,
   });
 }
 
