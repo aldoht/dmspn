@@ -3,15 +3,15 @@
 import { EmpresaNode, TransaccionEdge } from "@/lib/types";
 import { useEffect, useState, useCallback } from "react";
 
-export function useGrafoOverview(horas = 72) {
+export function useGrafoOverview(horas = 72, intervaloMs = 30000) {
   const [nodes, setNodes] = useState<EmpresaNode[]>([]);
   const [edges, setEdges] = useState<TransaccionEdge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchOverview = useCallback(
-    async (signal?: AbortSignal) => {
-      setLoading(true);
+    async (signal?: AbortSignal, esPolling = false) => {
+      if (!esPolling) setLoading(true);
       setError(null);
       try {
         const res = await fetch(`/api/graph/overview?horas=${horas}`, {
@@ -28,7 +28,7 @@ export function useGrafoOverview(horas = 72) {
           setError((err as Error).message);
         }
       } finally {
-        setLoading(false);
+        if (!esPolling) setLoading(false);
       }
     },
     [horas],
@@ -37,9 +37,16 @@ export function useGrafoOverview(horas = 72) {
   useEffect(() => {
     const controller = new AbortController();
     fetchOverview(controller.signal);
-    return () => controller.abort();
-  }, [fetchOverview]);
 
+    const interval = setInterval(() => {
+      fetchOverview(controller.signal, true);
+    }, intervaloMs);
+
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
+  }, [fetchOverview, intervaloMs]);
   const refetch = useCallback(() => fetchOverview(), [fetchOverview]);
 
   return { nodes, edges, loading, error, refetch };
