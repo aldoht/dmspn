@@ -1,4 +1,7 @@
-import { getTransaccionesRecientesDetalle } from "@/features/graph/queries";
+import {
+  getEmpresasConMovimientoReciente,
+  getTransaccionesRecientesDetalle,
+} from "@/features/graph/queries";
 import { Capa1 } from "@/lib/algo/cap1";
 import type { Transaccion } from "@/lib/types";
 
@@ -9,10 +12,13 @@ export async function GET(request: Request) {
   const dias = Math.max(1, Math.ceil(horas / 24));
 
   try {
-    // Una sola query de detalle (tx por tx): de aquí se derivan nodos,
-    // aristas y el flag sospechosa. Se pide el DOBLE de horas porque el
-    // crecimiento del Módulo 1 compara ventana actual vs previa.
-    const rows = await getTransaccionesRecientesDetalle(horas * 2);
+    // Doble fuente en paralelo: detalle para métricas + catálogo de
+    // empresas para labels. Si una empresa no viene en el catálogo
+    // (ventanas distintas), el label cae a su RFC sin romper.
+    const [rows, empresas] = await Promise.all([
+      getTransaccionesRecientesDetalle(horas * 2),
+      getEmpresasConMovimientoReciente(horas),
+    ]);
 
     const transacciones: Transaccion[] = rows.map((t) => ({
       id: String(t.ID),
@@ -23,12 +29,15 @@ export async function GET(request: Request) {
       fecha: String(t.FECHA).slice(0, 10),
     }));
 
-    // Nodos: RFCs distintos. Label temporal = RFC (la razón social llega
-    // con la Fase 0 al arreglar getEmpresasConMovimientoReciente).
+    // Nodos: RFCs distintos con razón social; fallback al RFC si la
+    // empresa no aparece en la ventana del catálogo.
     const rfcs = [
       ...new Set(transacciones.flatMap((t) => [t.origenId, t.destinoId])),
     ];
-    const nodes = rfcs.map((rfc) => ({ id: rfc, label: rfc }));
+    const nombres = new Map(
+      empresas.map((e) => [e.RFC_EMPRESA, e.RAZON_SOCIAL]),
+    );
+    const nodes = rfcs.map((rfc) => ({ id: rfc, label: nombres.get(rfc) ?? rfc }));
 
     // Aristas agregadas por relación (mismo shape que antes: peso = conteo).
     const conteos = new Map<string, number>();

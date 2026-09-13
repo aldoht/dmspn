@@ -15,10 +15,12 @@ export async function getEmpresasConMovimientoReciente(horas = 72) {
       UNION
       SELECT DISTINCT empresa_destino_sk FROM transacciones_recientes
     )
-    SELECT DISTINCT ea.rfc_empresa AS RFC_EMPRESA, ea.razon_social AS RAZON_SOCIAL
+    SELECT DISTINCT e.rfc_empresa AS RFC_EMPRESA, e.razon_social AS RAZON_SOCIAL
     FROM empresas_relevantes er
-    JOIN DIM_EMPRESA e ON e.empresa_sk = er.empresa_sk
-    JOIN DIM_EMPRESA_ACTUAL ea ON ea.rfc_empresa = e.rfc_empresa
+    -- DIM_EMPRESA_ACTUAL no existe: versión vigente directo en DIM_EMPRESA.
+    JOIN DIM_EMPRESA e
+      ON e.empresa_sk = er.empresa_sk
+     AND e.es_version_actual = TRUE
     `,
     [horas],
   );
