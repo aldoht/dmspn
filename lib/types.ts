@@ -18,6 +18,20 @@ export type Empresa = {
   riesgo: RiesgoLevel;
 };
 
+export type Dueno = {
+  rfcPersona: string;
+  nombre: string;
+  pctParticipacion: number;
+};
+
+export type EmpresaDetalle = Empresa & {
+  giro: string;
+  domicilio: string;
+  duenos: Dueno[];
+  numTransaccionesRecientes: number;
+  montoTotalReciente: number;
+};
+
 export type Transaccion = {
   id: string;
   origenId: string; // RFC origen
