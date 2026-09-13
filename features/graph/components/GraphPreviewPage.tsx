@@ -6,6 +6,7 @@ import { GroupDetailGraph } from "@/features/graph/components/GroupDetailGraph";
 import { Empresa, Transaccion } from "@/lib/types";
 import { useGrafoOverview } from "../hooks/useGraphOverview";
 import { EnterpriseDetailPanel } from "./EnterpriseDetailPanel";
+import { RelationDetailPanel } from "./RelationDetailPanel";
 
 const GraphCanvas = dynamic(
   () =>
@@ -34,11 +35,17 @@ export default function GraphPreviewPage() {
   const [mapaComunidades, setMapaComunidades] = useState<
     Record<string, number>
   >({});
+  const [relationEnterprises, setRelationEnterprises] = useState<Empresa[]>([]);
+  const [relationTransactions, setRelationTransactions] = useState<
+    Transaccion[]
+  >([]);
   const { nodes, edges, loading, error, refetch } = useGrafoOverview(240);
   const commonClasses =
     "rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:text-white hover:bg-brand hover:cursor-pointer";
 
   const handleNodeClick = useCallback((rfc: string) => {
+    setRelationEnterprises([]);
+    setRelationTransactions([]);
     setSelectedEnterprise(rfc);
   }, []);
 
@@ -75,14 +82,15 @@ export default function GraphPreviewPage() {
   }, []);
 
   const handleEdgeClick = useCallback(async (rfcA: string, rfcB: string) => {
-    console.log("Click on edge:", rfcA, rfcB);
+    setSelectedEnterprise(null);
     const res = await fetch("/api/graph/group", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rfcs: [rfcA, rfcB] }),
     });
     const { empresas, transacciones } = await res.json();
-    console.log(empresas, transacciones);
+    setRelationEnterprises(empresas as Empresa[]);
+    setRelationTransactions(transacciones as Transaccion[]);
   }, []);
 
   return (
@@ -136,6 +144,14 @@ export default function GraphPreviewPage() {
                 onClose={() => setSelectedEnterprise(null)}
                 onVerGrupo={() => findGroup(selectedEnterprise)}
                 onSolicitarAgente={() => {}} // TODO: logic for agent workflow
+              />
+              <RelationDetailPanel
+                enterprises={relationEnterprises}
+                transactions={relationTransactions}
+                onClose={() => {
+                  setRelationEnterprises([]);
+                  setRelationTransactions([]);
+                }}
               />
             </>
           )
