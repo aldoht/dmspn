@@ -24,7 +24,7 @@ export function GroupedTransactionsPanel({
       <div className="flex items-center justify-between border-b border-border p-4">
         <div>
           <h2 className="font-display text-lg font-semibold text-text-primary">
-            {transacciones.length} transacciones
+            {transacciones.length} transactions
           </h2>
           <p className="text-sm text-text-muted">
             Total: ${montoTotal.toLocaleString()}
@@ -32,7 +32,7 @@ export function GroupedTransactionsPanel({
         </div>
         <button
           onClick={onClose}
-          aria-label="Cerrar panel"
+          aria-label="Close panel"
           className="rounded-md p-1 text-text-muted hover:bg-surface-raised hover:text-text-primary"
         >
           <X size={18} />
@@ -43,8 +43,8 @@ export function GroupedTransactionsPanel({
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-surface-raised text-left text-text-muted">
             <tr>
-              <th className="px-4 py-2 font-medium">Fecha</th>
-              <th className="px-4 py-2 font-medium">Monto</th>
+              <th className="px-4 py-2 font-medium">Date</th>
+              <th className="px-4 py-2 font-medium">Amount</th>
             </tr>
           </thead>
           <tbody>

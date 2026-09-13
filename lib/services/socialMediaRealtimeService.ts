@@ -18,15 +18,15 @@ export async function buscarRedesEnTiempoReal(nombreComercio: string, ciudad: st
   try {
     const res = await fetch(`https://serpapi.com/search.json?engine=google&q=${query}&api_key=${apiKey}`);
     const data = await res.json();
-    const resultados = data.organic_results || [];
+    const resultados: { link?: string; snippet?: string }[] = data.organic_results || [];
 
     const encontrarRed = (domain: string): RealtimeSocialData => {
-      const match = resultados.find((r: any) => r.link && r.link.includes(domain));
+      const match = resultados.find((r) => r.link && r.link.includes(domain));
       return {
         plataforma: domain,
         encontrado: !!match,
-        fragmentoGoogle: match ? match.snippet : "No se encontró presencia indexada.",
-        url: match ? match.link : "",
+        fragmentoGoogle: match?.snippet ?? "No indexed presence found.",
+        url: match?.link ?? "",
       };
     };
 
