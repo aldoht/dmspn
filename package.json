@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/genai": "^2.22.0",
     "@xyflow/react": "^12.11.6",
     "d3-force": "^3.0.0",
     "graphology": "^0.26.0",
