@@ -3,10 +3,12 @@
 import dynamic from "next/dynamic";
 import { useState, useCallback } from "react";
 import { GroupDetailGraph } from "@/features/graph/components/GroupDetailGraph";
-import { Empresa, Transaccion } from "@/lib/types";
-import { useGrafoOverview } from "../hooks/useGraphOverview";
-import { EnterpriseDetailPanel } from "./EnterpriseDetailPanel";
-import { RelationDetailPanel } from "./RelationDetailPanel";
+import {
+  mockEmpresasOverview,
+  mockTransaccionesOverview,
+  mockEmpresasDetalle,
+  mockTransaccionesDetalle,
+} from "@/features/graph/mockData";
 
 const GraphCanvas = dynamic(
   () =>
@@ -25,72 +27,19 @@ const GraphCanvas = dynamic(
 
 export default function GraphPreviewPage() {
   const [vista, setVista] = useState<"overview" | "detail">("overview");
-  const [selectedEnterprise, setSelectedEnterprise] = useState<string | null>(
-    null,
-  );
-  const [empresasGrupo, setEmpresasGrupo] = useState<Empresa[]>([]);
-  const [transaccionesGrupo, setTransaccionesGrupo] = useState<Transaccion[]>(
-    [],
-  );
-  const [mapaComunidades, setMapaComunidades] = useState<
-    Record<string, number>
-  >({});
-  const [relationEnterprises, setRelationEnterprises] = useState<Empresa[]>([]);
-  const [relationTransactions, setRelationTransactions] = useState<
-    Transaccion[]
-  >([]);
-  const { nodes, edges, loading, error, refetch } = useGrafoOverview(240);
   const commonClasses =
     "rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:text-white hover:bg-brand hover:cursor-pointer";
 
-  const handleNodeClick = useCallback((rfc: string) => {
-    setRelationEnterprises([]);
-    setRelationTransactions([]);
-    setSelectedEnterprise(rfc);
+  const handleNodeClick = useCallback((id: string) => {
+    console.log("Click on enterprise:", id);
   }, []);
 
-  const handleGroupClick = useCallback(
-    async (groupId: number, nodeIds: string[]) => {
-      setSelectedEnterprise(null);
-      const res = await fetch("/api/graph/group", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rfcs: nodeIds }),
-      });
-      const { empresas, transacciones } = await res.json();
-      setEmpresasGrupo(empresas);
-      setTransaccionesGrupo(transacciones);
-      setVista("detail");
-    },
-    [],
-  );
-
-  const handleGroupCalculation = useCallback((map: Record<string, number>) => {
-    setMapaComunidades(map);
+  const handleGroupClick = useCallback((groupId: number, nodeIds: string[]) => {
+    console.log("Click on group:", groupId, nodeIds);
   }, []);
 
-  const findGroup = useCallback(async (rfc: string | null) => {
-    if (!rfc) {
-      return;
-    }
-    handleGroupClick(
-      mapaComunidades[rfc],
-      Object.keys(mapaComunidades).filter(
-        (r) => mapaComunidades[r] === mapaComunidades[rfc],
-      ),
-    );
-  }, []);
-
-  const handleEdgeClick = useCallback(async (rfcA: string, rfcB: string) => {
-    setSelectedEnterprise(null);
-    const res = await fetch("/api/graph/group", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rfcs: [rfcA, rfcB] }),
-    });
-    const { empresas, transacciones } = await res.json();
-    setRelationEnterprises(empresas as Empresa[]);
-    setRelationTransactions(transacciones as Transaccion[]);
+  const handleTransactionClick = useCallback((transactionId: string) => {
+    console.log("Click on transaction:", transactionId);
   }, []);
 
   return (
@@ -104,61 +53,33 @@ export default function GraphPreviewPage() {
               : "bg-surface-raised text-text-secondary"
           }`}
         >
-          Overview (10d)
+          Overview (72h)
         </button>
         <button
           onClick={() => setVista("detail")}
-          disabled={empresasGrupo.length === 0}
-          className={`${commonClasses} disabled:opacity-40 ${
+          className={`${commonClasses} ${
             vista === "detail"
               ? "bg-brand text-white"
               : "bg-surface-raised text-text-secondary"
           }`}
         >
-          Group detail
+          Group Detail
         </button>
       </div>
 
-      <div className="relative flex-1">
+      <div className="flex-1">
         {vista === "overview" ? (
-          loading ? (
-            <div className="flex h-full items-center justify-center text-text-muted">
-              Cargando grafo...
-            </div>
-          ) : error ? (
-            <div className="flex h-full items-center justify-center text-risk-critical">
-              Error: {error}
-            </div>
-          ) : (
-            <>
-              <GraphCanvas
-                nodes={nodes}
-                edges={edges}
-                onNodeClick={handleNodeClick}
-                onGroupClick={handleGroupClick}
-                onEdgeClick={handleEdgeClick}
-                onCalculateGroups={handleGroupCalculation}
-              />
-              <EnterpriseDetailPanel
-                rfc={selectedEnterprise}
-                onClose={() => setSelectedEnterprise(null)}
-                onVerGrupo={() => findGroup(selectedEnterprise)}
-                onSolicitarAgente={() => {}} // TODO: logic for agent workflow
-              />
-              <RelationDetailPanel
-                enterprises={relationEnterprises}
-                transactions={relationTransactions}
-                onClose={() => {
-                  setRelationEnterprises([]);
-                  setRelationTransactions([]);
-                }}
-              />
-            </>
-          )
+          <GraphCanvas
+            nodes={mockEmpresasOverview}
+            edges={mockTransaccionesOverview}
+            onNodeClick={handleNodeClick}
+            onGroupClick={handleGroupClick}
+          />
         ) : (
           <GroupDetailGraph
-            empresas={empresasGrupo}
-            transacciones={transaccionesGrupo}
+            empresas={mockEmpresasDetalle}
+            transacciones={mockTransaccionesDetalle}
+            onTransaccionClick={handleTransactionClick}
           />
         )}
       </div>

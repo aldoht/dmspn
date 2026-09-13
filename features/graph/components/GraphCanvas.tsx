@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
-import { UndirectedGraph } from "graphology";
+import Graph from "graphology";
 import { circular } from "graphology-layout";
 import forceAtlas2 from "graphology-layout-forceatlas2";
 import louvain from "graphology-communities-louvain";
@@ -14,8 +14,6 @@ type GraphCanvasProps = {
   edges: TransaccionEdge[];
   onNodeClick?: (nodeId: string) => void;
   onGroupClick?: (groupId: number, nodeIds: string[]) => void;
-  onEdgeClick?: (rfcA: string, rfcB: string) => void;
-  onCalculateGroups?: (map: Record<string, number>) => void;
 };
 
 const GROUP_COLORS = [
@@ -32,8 +30,6 @@ export function GraphCanvas({
   edges,
   onNodeClick,
   onGroupClick,
-  onEdgeClick,
-  onCalculateGroups,
 }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
@@ -41,7 +37,7 @@ export function GraphCanvas({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const graph = new UndirectedGraph();
+    const graph = new Graph();
 
     nodes.forEach((n) => {
       const label = n.label.length > 28 ? `${n.label.slice(0, 26)}…` : n.label;
@@ -49,19 +45,7 @@ export function GraphCanvas({
     });
 
     edges.forEach((e) => {
-      if (graph.hasEdge(e.source, e.target)) {
-        const prevWeight =
-          graph.getEdgeAttribute(e.source, e.target, "weight") ?? 0;
-        graph.setEdgeAttribute(
-          e.source,
-          e.target,
-          "weight",
-          prevWeight + (e.weight ?? 1),
-        );
-        if (e.sospechosa) {
-          graph.setEdgeAttribute(e.source, e.target, "sospechosa", true);
-        }
-      } else {
+      if (!graph.hasEdge(e.source, e.target)) {
         graph.addEdge(e.source, e.target, {
           weight: e.weight ?? 5,
           sospechosa: e.sospechosa ?? false,
@@ -74,16 +58,6 @@ export function GraphCanvas({
     forceAtlas2.assign(graph, { iterations: 30 });
 
     louvain.assign(graph);
-
-    if (onCalculateGroups) {
-      const comunidades: Record<string, number> = {};
-
-      graph.forEachNode((node, attrs) => {
-        comunidades[node] = attrs.community as number;
-      });
-
-      onCalculateGroups(comunidades);
-    }
 
     graph.forEachNode((node, attrs) => {
       const community = (attrs.community as number) ?? 0;
@@ -101,8 +75,8 @@ export function GraphCanvas({
         attrs.sospechosa ? "#8E1F1F" : "#DDE1DE",
       );
 
-      const weight = (attrs.weight as number) ?? 1;
-      const baseSize = Math.max(4, Math.min(weight, 10));
+      const weight = (attrs.weight as number) ?? 5;
+      const baseSize = Math.min(1 + weight / 4, 15);
       graph.setEdgeAttribute(
         edge,
         "size",
@@ -111,7 +85,6 @@ export function GraphCanvas({
     });
 
     const sigma = new Sigma(graph, containerRef.current, {
-      enableEdgeEvents: true,
       renderEdgeLabels: false,
       labelFont: "IBM Plex Sans, sans-serif",
       labelSize: 13,
@@ -125,11 +98,7 @@ export function GraphCanvas({
     });
 
     if (onNodeClick) {
-      sigma.on("clickNode", ({ node, event }) => {
-        if (!event.original.shiftKey) {
-          onNodeClick(node);
-        }
-      });
+      sigma.on("clickNode", ({ node }) => onNodeClick(node));
     }
 
     if (onGroupClick) {
@@ -143,18 +112,6 @@ export function GraphCanvas({
             );
           onGroupClick(community, groupNodeIds);
         }
-      });
-    }
-
-    if (onEdgeClick) {
-      sigma.on("enterEdge", () => {
-        containerRef.current!.style.cursor = "pointer";
-      });
-      sigma.on("leaveEdge", () => {
-        containerRef.current!.style.cursor = "default";
-      });
-      sigma.on("clickEdge", ({ edge }) => {
-        onEdgeClick(...graph.extremities(edge));
       });
     }
 
