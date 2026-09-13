@@ -1,6 +1,17 @@
 import { executeQuery } from "@/lib/db";
 import { Transaccion } from "@/lib/types";
 
+export function calculatePercentChange(
+  current: number,
+  previous: number,
+): number {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return Math.round(((current - previous) / previous) * 1000) / 10;
+}
+
+type CountRow = { COUNT: number };
+type SumRow = { TOTAL: number };
+
 type BasicAlert = {
   ESTADO: string;
   FECHA_GENERACION: string;
@@ -25,27 +36,39 @@ export async function getCriticalAlertsOpen() {
   return rows ?? [];
 }
 
-export function mapCriticalAlertsToKpi(alerts: BasicAlert[]) {
+export async function getCriticalAlertsOpenCountAsOf(hoursAgo: number = 24) {
+  const rows = await executeQuery<CountRow>(
+    `
+    SELECT COUNT(*) AS COUNT
+    FROM FACT_ALERTA
+    WHERE severidad = 'critical'
+      AND fecha_generacion <= DATEADD(hour, -?, CURRENT_TIMESTAMP())
+      AND (fecha_resolucion IS NULL OR fecha_resolucion > DATEADD(hour, -?, CURRENT_TIMESTAMP()))
+    `,
+    [hoursAgo, hoursAgo],
+  );
+  return rows[0]?.COUNT ?? 0;
+}
+
+export function mapCriticalAlertsToKpi(
+  alerts: BasicAlert[],
+  previousCount: number,
+) {
   const value = alerts.length;
 
   const groupedByDate = alerts.reduce<Record<string, number>>((acc, alert) => {
     const date = new Date(alert.FECHA_GENERACION).toISOString().slice(0, 10);
-
     acc[date] = (acc[date] ?? 0) + 1;
-
     return acc;
   }, {});
 
   const data = Object.entries(groupedByDate)
     .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-    .map(([date, count]) => ({
-      label: date,
-      value: count,
-    }));
+    .map(([date, count]) => ({ label: date, value: count }));
 
   return {
     value,
-    change: 0,
+    change: calculatePercentChange(value, previousCount),
     data,
   };
 }
@@ -83,13 +106,7 @@ export async function getTransactionsOverAmount(
     [hours, amount],
   );
 
-  const mapRow = (t: {
-    ID: number;
-    ORIGEN_ID: string;
-    DESTINO_ID: string;
-    MONTO: number;
-    FECHA: string;
-  }): Transaccion => ({
+  const mapRow = (t: TransaccionDetalleRow): Transaccion => ({
     id: String(t.ID),
     origenId: t.ORIGEN_ID,
     destinoId: t.DESTINO_ID,
@@ -104,13 +121,9 @@ export function mapTransactionsToChart(transactions: Transaccion[]) {
   const grouped = transactions.reduce<Record<string, number>>(
     (acc, transaction) => {
       const date = new Date(transaction.fecha);
-
       date.setMinutes(0, 0, 0);
-
       const key = date.toISOString();
-
       acc[key] = (acc[key] ?? 0) + 1;
-
       return acc;
     },
     {},
@@ -127,10 +140,7 @@ export function mapTransactionsToChart(transactions: Transaccion[]) {
     }));
 }
 
-type AlertsBySeverityRow = {
-  SEVERIDAD: string;
-  COUNT: number;
-};
+type AlertsBySeverityRow = { SEVERIDAD: string; COUNT: number };
 
 export async function getOpenAlertsBySeverity() {
   const rows = await executeQuery<AlertsBySeverityRow>(
@@ -154,9 +164,16 @@ const SEVERITY_COLOR: Record<string, string> = {
   low: "var(--color-risk-low)",
 };
 
+const SEVERITY_LABEL: Record<string, string> = {
+  critical: "Critical",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
 export function mapAlertsBySeverityToChart(rows: AlertsBySeverityRow[]) {
   return rows.map((row) => ({
-    name: row.SEVERIDAD,
+    name: SEVERITY_LABEL[row.SEVERIDAD] ?? row.SEVERIDAD,
     value: row.COUNT,
     color: SEVERITY_COLOR[row.SEVERIDAD] ?? "var(--color-text-muted)",
   }));
@@ -179,16 +196,31 @@ export async function getOpenAlertsLast72h() {
   return rows ?? [];
 }
 
-export function mapOpenAlerts72hToKpi(alerts: BasicAlert[]) {
+export async function getOpenAlertsPreviousWindowCount(hours: number = 72) {
+  const rows = await executeQuery<CountRow>(
+    `
+    SELECT COUNT(*) AS COUNT
+    FROM FACT_ALERTA fa
+    WHERE fa.fecha_resolucion IS NULL
+      AND fa.fecha_generacion >= DATEADD(hour, -?, CURRENT_TIMESTAMP())
+      AND fa.fecha_generacion < DATEADD(hour, -?, CURRENT_TIMESTAMP())
+    `,
+    [hours * 2, hours],
+  );
+  return rows[0]?.COUNT ?? 0;
+}
+
+export function mapOpenAlerts72hToKpi(
+  alerts: BasicAlert[],
+  previousCount: number,
+) {
   const value = alerts.length;
 
   const groupedByHour = alerts.reduce<Record<string, number>>((acc, alert) => {
     const hourBucket = new Date(alert.FECHA_GENERACION);
     hourBucket.setMinutes(0, 0, 0);
     const key = hourBucket.toISOString();
-
     acc[key] = (acc[key] ?? 0) + 1;
-
     return acc;
   }, {});
 
@@ -204,16 +236,12 @@ export function mapOpenAlerts72hToKpi(alerts: BasicAlert[]) {
 
   return {
     value,
-    change: 0,
+    change: calculatePercentChange(value, previousCount),
     data,
   };
 }
 
-type TopEnterpriseRow = {
-  RFC: string;
-  RAZON_SOCIAL: string;
-  TX_COUNT: number;
-};
+type TopEnterpriseRow = { RFC: string; RAZON_SOCIAL: string; TX_COUNT: number };
 
 export async function getEnterprisesWithMoreThan10Transactions(
   minTransactions: number = 2,
@@ -253,15 +281,12 @@ export function mapEnterprisesToChart(rows: TopEnterpriseRow[]) {
   }));
 }
 
-type FalsePositiveRow = {
-  FECHA_RESOLUCION: string;
-};
+type FalsePositiveRow = { FECHA_RESOLUCION: string };
 
 export async function getFalsePositivesLast30d() {
   const rows = await executeQuery<FalsePositiveRow>(
     `
-    SELECT
-      fa.fecha_resolucion AS FECHA_RESOLUCION
+    SELECT fa.fecha_resolucion AS FECHA_RESOLUCION
     FROM FACT_ALERTA fa
     WHERE fa.estado = 'falso_positivo'
       AND fa.fecha_resolucion >= DATEADD(day, -30, CURRENT_TIMESTAMP())
@@ -271,7 +296,24 @@ export async function getFalsePositivesLast30d() {
   return rows ?? [];
 }
 
-export function mapFalsePositivesToKpi(rows: FalsePositiveRow[]) {
+export async function getFalsePositivesPreviousWindowCount(days: number = 30) {
+  const rows = await executeQuery<CountRow>(
+    `
+    SELECT COUNT(*) AS COUNT
+    FROM FACT_ALERTA fa
+    WHERE fa.estado = 'falso_positivo'
+      AND fa.fecha_resolucion >= DATEADD(day, -?, CURRENT_TIMESTAMP())
+      AND fa.fecha_resolucion < DATEADD(day, -?, CURRENT_TIMESTAMP())
+    `,
+    [days * 2, days],
+  );
+  return rows[0]?.COUNT ?? 0;
+}
+
+export function mapFalsePositivesToKpi(
+  rows: FalsePositiveRow[],
+  previousCount: number,
+) {
   const value = rows.length;
 
   const groupedByDate = rows.reduce<Record<string, number>>((acc, row) => {
@@ -282,14 +324,11 @@ export function mapFalsePositivesToKpi(rows: FalsePositiveRow[]) {
 
   const data = Object.entries(groupedByDate)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, count]) => ({
-      label: date,
-      value: count,
-    }));
+    .map(([date, count]) => ({ label: date, value: count }));
 
   return {
     value,
-    change: 0,
+    change: calculatePercentChange(value, previousCount),
     data,
   };
 }
@@ -304,17 +343,13 @@ export async function getGeneratedVsResolvedAlerts(days: number = 30) {
   const rows = await executeQuery<GeneratedVsResolvedRow>(
     `
     WITH generadas AS (
-      SELECT
-        DATE_TRUNC('day', fecha_generacion) AS DIA,
-        COUNT(*) AS GENERADAS
+      SELECT DATE_TRUNC('day', fecha_generacion) AS DIA, COUNT(*) AS GENERADAS
       FROM FACT_ALERTA
       WHERE fecha_generacion >= DATEADD(day, -?, CURRENT_TIMESTAMP())
       GROUP BY 1
     ),
     resueltas AS (
-      SELECT
-        DATE_TRUNC('day', fecha_resolucion) AS DIA,
-        COUNT(*) AS RESUELTAS
+      SELECT DATE_TRUNC('day', fecha_resolucion) AS DIA, COUNT(*) AS RESUELTAS
       FROM FACT_ALERTA
       WHERE fecha_resolucion IS NOT NULL
         AND fecha_resolucion >= DATEADD(day, -?, CURRENT_TIMESTAMP())
@@ -344,17 +379,12 @@ export function mapGeneratedVsResolvedToChart(rows: GeneratedVsResolvedRow[]) {
   }));
 }
 
-type AvgRiskScoreRow = {
-  PERIODO: string;
-  AVG_SCORE: number;
-};
+type AvgRiskScoreRow = { PERIODO: string; AVG_SCORE: number };
 
 export async function getAverageRiskScoreOverTime(days: number = 30) {
   const rows = await executeQuery<AvgRiskScoreRow>(
     `
-    SELECT
-      periodo         AS PERIODO,
-      AVG(score_total) AS AVG_SCORE
+    SELECT periodo AS PERIODO, AVG(score_total) AS AVG_SCORE
     FROM FACT_FEATURES_RIESGO
     WHERE periodo >= DATEADD(day, -?, CURRENT_DATE())
     GROUP BY periodo
@@ -375,17 +405,12 @@ export function mapAverageRiskScoreToChart(rows: AvgRiskScoreRow[]) {
   }));
 }
 
-type VolumeRow = {
-  MONTO: number;
-  FECHA: string;
-};
+type VolumeRow = { MONTO: number; FECHA: string };
 
 export async function getTotalVolumeLast48h() {
   const rows = await executeQuery<VolumeRow>(
     `
-    SELECT
-      t.monto     AS MONTO,
-      t.fecha_hora AS FECHA
+    SELECT t.monto AS MONTO, t.fecha_hora AS FECHA
     FROM FACT_TRANSACCION t
     WHERE t.fecha_hora >= DATEADD(hour, -48, CURRENT_TIMESTAMP())
     `,
@@ -394,16 +419,27 @@ export async function getTotalVolumeLast48h() {
   return rows ?? [];
 }
 
-export function mapTotalVolumeToKpi(rows: VolumeRow[]) {
+export async function getTotalVolumePreviousWindow(hours: number = 48) {
+  const rows = await executeQuery<SumRow>(
+    `
+    SELECT COALESCE(SUM(t.monto), 0) AS TOTAL
+    FROM FACT_TRANSACCION t
+    WHERE t.fecha_hora >= DATEADD(hour, -?, CURRENT_TIMESTAMP())
+      AND t.fecha_hora < DATEADD(hour, -?, CURRENT_TIMESTAMP())
+    `,
+    [hours * 2, hours],
+  );
+  return rows[0]?.TOTAL ?? 0;
+}
+
+export function mapTotalVolumeToKpi(rows: VolumeRow[], previousTotal: number) {
   const value = rows.reduce((sum, row) => sum + Number(row.MONTO), 0);
 
   const groupedByHour = rows.reduce<Record<string, number>>((acc, row) => {
     const hourBucket = new Date(row.FECHA);
     hourBucket.setMinutes(0, 0, 0);
     const key = hourBucket.toISOString();
-
     acc[key] = (acc[key] ?? 0) + Number(row.MONTO);
-
     return acc;
   }, {});
 
@@ -419,15 +455,15 @@ export function mapTotalVolumeToKpi(rows: VolumeRow[]) {
 
   return {
     value: Math.round(value),
-    change: 0,
+    change: calculatePercentChange(
+      Math.round(value),
+      Math.round(previousTotal),
+    ),
     data,
   };
 }
 
-type FirstActivityRow = {
-  EMPRESA_SK: number;
-  PRIMERA_FECHA: string;
-};
+type FirstActivityRow = { EMPRESA_SK: number; PRIMERA_FECHA: string };
 
 export async function getEnterprisesFirstActivityThisMonth() {
   const rows = await executeQuery<FirstActivityRow>(
@@ -441,9 +477,7 @@ export async function getEnterprisesFirstActivityThisMonth() {
       )
       GROUP BY empresa_sk
     )
-    SELECT
-      empresa_sk    AS EMPRESA_SK,
-      primera_fecha AS PRIMERA_FECHA
+    SELECT empresa_sk AS EMPRESA_SK, primera_fecha AS PRIMERA_FECHA
     FROM primera_transaccion
     WHERE primera_fecha >= DATEADD(month, -1, CURRENT_TIMESTAMP())
     `,
@@ -452,7 +486,32 @@ export async function getEnterprisesFirstActivityThisMonth() {
   return rows ?? [];
 }
 
-export function mapFirstActivityToKpi(rows: FirstActivityRow[]) {
+export async function getEnterprisesFirstActivityPreviousMonthCount() {
+  const rows = await executeQuery<CountRow>(
+    `
+    WITH primera_transaccion AS (
+      SELECT empresa_sk, MIN(fecha_hora) AS primera_fecha
+      FROM (
+        SELECT empresa_origen_sk AS empresa_sk, fecha_hora FROM FACT_TRANSACCION
+        UNION ALL
+        SELECT empresa_destino_sk AS empresa_sk, fecha_hora FROM FACT_TRANSACCION
+      )
+      GROUP BY empresa_sk
+    )
+    SELECT COUNT(*) AS COUNT
+    FROM primera_transaccion
+    WHERE primera_fecha >= DATEADD(month, -2, CURRENT_TIMESTAMP())
+      AND primera_fecha < DATEADD(month, -1, CURRENT_TIMESTAMP())
+    `,
+    [],
+  );
+  return rows[0]?.COUNT ?? 0;
+}
+
+export function mapFirstActivityToKpi(
+  rows: FirstActivityRow[],
+  previousCount: number,
+) {
   const value = rows.length;
 
   const groupedByDate = rows.reduce<Record<string, number>>((acc, row) => {
@@ -463,60 +522,11 @@ export function mapFirstActivityToKpi(rows: FirstActivityRow[]) {
 
   const data = Object.entries(groupedByDate)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, count]) => ({
-      label: date,
-      value: count,
-    }));
+    .map(([date, count]) => ({ label: date, value: count }));
 
   return {
     value,
-    change: 0,
-    data,
-  };
-}
-
-type ClusterAlertRow = {
-  CLUSTER_ID: number;
-  FECHA_GENERACION: string;
-};
-
-export async function getClustersWithActiveAlert() {
-  const rows = await executeQuery<ClusterAlertRow>(
-    `
-    SELECT DISTINCT
-      fce.cluster_id       AS CLUSTER_ID,
-      fa.fecha_generacion  AS FECHA_GENERACION
-    FROM FACT_CLUSTER_EMPRESA fce
-    JOIN FACT_ALERTA fa
-      ON fa.empresa_sk = fce.empresa_sk
-     AND fa.fecha_resolucion IS NULL
-    `,
-    [],
-  );
-  return rows ?? [];
-}
-
-export function mapClustersWithActiveAlertToKpi(rows: ClusterAlertRow[]) {
-  const uniqueClusters = new Set(rows.map((row) => row.CLUSTER_ID));
-  const value = uniqueClusters.size;
-
-  const groupedByDate = rows.reduce<Record<string, Set<number>>>((acc, row) => {
-    const date = new Date(row.FECHA_GENERACION).toISOString().slice(0, 10);
-    if (!acc[date]) acc[date] = new Set();
-    acc[date].add(row.CLUSTER_ID);
-    return acc;
-  }, {});
-
-  const data = Object.entries(groupedByDate)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, clusterSet]) => ({
-      label: date,
-      value: clusterSet.size,
-    }));
-
-  return {
-    value,
-    change: 0,
+    change: calculatePercentChange(value, previousCount),
     data,
   };
 }

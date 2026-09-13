@@ -8,6 +8,7 @@ function formatValue(value: number, prefix = "", suffix = "") {
 
 type KpiProps = {
   title?: string;
+  metricLabel: string;
   value: number;
   change: number;
   data: {
@@ -21,6 +22,7 @@ type KpiProps = {
 
 export function KPI({
   title,
+  metricLabel,
   value,
   change,
   data,
@@ -109,7 +111,7 @@ export function KPI({
               }}
               formatter={(chartValue) => [
                 formatValue(Number(chartValue), prefix, suffix),
-                title,
+                metricLabel,
               ]}
             />
 

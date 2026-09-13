@@ -63,7 +63,9 @@ export function TopEnterprisesChart({ data }: TopEnterprisesChartProps) {
             }}
             formatter={(value) => [
               `${value} transactions`,
+              "Transaction count",
             ]}
+            labelFormatter={(label) => label}
           />
 
           <Bar
