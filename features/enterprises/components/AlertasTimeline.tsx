@@ -1,4 +1,4 @@
-import type { RiesgoLevel } from "@/features/graph/types";
+import type { RiesgoLevel } from "@/lib/types";
 
 type AlertaItem = {
   alertaSk: number;
@@ -18,10 +18,10 @@ const SEVERIDAD_BADGE: Record<RiesgoLevel, string> = {
 };
 
 const ESTADO_LABEL: Record<string, string> = {
-  abierta: "Abierta",
-  en_revision: "En revisión",
-  confirmada: "Confirmada",
-  falso_positivo: "Falso positivo",
+  abierta: "Open",
+  en_revision: "Under review",
+  confirmada: "Confirmed",
+  falso_positivo: "False positive",
 };
 
 export function AlertasTimeline({ alertas }: { alertas: AlertaItem[] }) {
@@ -48,7 +48,7 @@ export function AlertasTimeline({ alertas }: { alertas: AlertaItem[] }) {
             </span>
             <p className="mt-1 text-xs text-text-muted">
               {a.fechaGeneracion}
-              {a.fechaResolucion && ` → resuelta ${a.fechaResolucion}`}
+              {a.fechaResolucion && ` → resolved ${a.fechaResolucion}`}
             </p>
           </div>
           <div className="text-right">

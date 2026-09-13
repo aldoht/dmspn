@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useState, useCallback } from "react";
 import { GroupDetailGraph } from "@/features/graph/components/GroupDetailGraph";
 import { Empresa, Transaccion } from "@/lib/types";
@@ -25,6 +26,7 @@ const GraphCanvas = dynamic(
 );
 
 export default function GraphPreviewPage() {
+  const router = useRouter();
   const [vista, setVista] = useState<"overview" | "detail">("overview");
   const [selectedEnterprise, setSelectedEnterprise] = useState<string | null>(
     null,
@@ -81,6 +83,15 @@ export default function GraphPreviewPage() {
   const handleGroupCalculation = useCallback((map: Record<string, number>) => {
     setMapaComunidades(map);
   }, []);
+
+  // Redirige al Agent con el RFC del nodo: /agent?rfc=XXX. El Agent
+  // precarga el input y ejecuta la auditoría sin pedirlo de nuevo.
+  const handleSolicitarAgente = useCallback(
+    (rfc: string) => {
+      router.push(`/agent?rfc=${encodeURIComponent(rfc)}`);
+    },
+    [router],
+  );
 
   const findGroup = useCallback(
     async (rfc: string | null) => {
@@ -149,7 +160,7 @@ export default function GraphPreviewPage() {
         {vista === "overview" ? (
           loading ? (
             <div className="flex h-full items-center justify-center text-text-muted">
-              Cargando grafo...
+              Loading graph...
             </div>
           ) : error ? (
             <div className="flex h-full items-center justify-center text-risk-critical">
@@ -169,7 +180,7 @@ export default function GraphPreviewPage() {
                 rfc={selectedEnterprise}
                 onClose={() => setSelectedEnterprise(null)}
                 onVerGrupo={() => findGroup(selectedEnterprise)}
-                onSolicitarAgente={() => {}} // TODO: logic for agent workflow
+                onSolicitarAgente={handleSolicitarAgente}
               />
               <RelationDetailPanel
                 enterprises={relationEnterprises}

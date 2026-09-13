@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/Card";
 function ChartSkeleton() {
   return (
     <div className="flex h-50 items-center justify-center text-sm text-text-muted">
-      Cargando...
+      Loading...
     </div>
   );
 }

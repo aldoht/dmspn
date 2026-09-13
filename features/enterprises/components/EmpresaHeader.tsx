@@ -38,21 +38,21 @@ export async function EmpresaHeader({ rfc }: { rfc: string }) {
           <p className="font-mono text-text-primary">{empresa.RFC_EMPRESA}</p>
         </div>
         <div>
-          <p className="text-text-muted">Giro</p>
+          <p className="text-text-muted">Business type</p>
           <p className="capitalize text-text-primary">{empresa.GIRO}</p>
         </div>
         <div className="col-span-2">
-          <p className="text-text-muted">Domicilio</p>
+          <p className="text-text-muted">Address</p>
           <p className="text-text-primary">{empresa.DOMICILIO_REGISTRADO}</p>
         </div>
       </div>
 
       <div>
         <p className="mb-1 text-sm font-medium text-text-primary">
-          Dueños registrados
+          Registered owners
         </p>
         {duenos.length === 0 ? (
-          <p className="text-sm text-text-muted">Sin dueños registrados.</p>
+          <p className="text-sm text-text-muted">No registered owners.</p>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {duenos.map((d) => (

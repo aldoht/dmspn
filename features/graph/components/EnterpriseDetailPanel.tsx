@@ -45,7 +45,7 @@ export function EnterpriseDetailPanel({
       </div>
 
       <div className="overflow-y-auto p-4">
-        {loading && <p className="text-sm text-text-muted">Cargando...</p>}
+        {loading && <p className="text-sm text-text-muted">Loading...</p>}
         {error && <p className="text-sm text-risk-critical">Error: {error}</p>}
 
         {!loading && empresa && (
@@ -130,7 +130,7 @@ export function EnterpriseDetailPanel({
                   onClick={() => onSolicitarAgente(empresa.id)}
                   className="rounded-md transition-colors border border-border bg-surface-raised px-3 py-2 text-sm font-medium text-text-primary hover:bg-border-subtle hover:cursor-pointer"
                 >
-                  Run agentic investigation
+                  Run check investigation
                 </button>
               )}
             </div>

@@ -77,7 +77,7 @@ export function GroupDetailGraph({
           target: destinoId,
           type: "transaccion",
           data: {
-            label: `$${montoTotal.toLocaleString()} — ${txns.length} transacciones`,
+            label: `$${montoTotal.toLocaleString()} — ${txns.length} transactions`,
             curvature: 0.25,
             esAgregada: true,
             transacciones: txns,
