@@ -14,6 +14,7 @@ type GraphCanvasProps = {
   edges: TransaccionEdge[];
   onNodeClick?: (nodeId: string) => void;
   onGroupClick?: (groupId: number, nodeIds: string[]) => void;
+  onEdgeClick?: (rfcA: string, rfcB: string) => void;
   onCalculateGroups?: (map: Record<string, number>) => void;
 };
 
@@ -31,6 +32,7 @@ export function GraphCanvas({
   edges,
   onNodeClick,
   onGroupClick,
+  onEdgeClick,
   onCalculateGroups,
 }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,8 +101,8 @@ export function GraphCanvas({
         attrs.sospechosa ? "#8E1F1F" : "#DDE1DE",
       );
 
-      const weight = (attrs.weight as number) ?? 5;
-      const baseSize = Math.min(1 + weight / 4, 15);
+      const weight = (attrs.weight as number) ?? 1;
+      const baseSize = Math.max(4, Math.min(weight, 10));
       graph.setEdgeAttribute(
         edge,
         "size",
@@ -109,6 +111,7 @@ export function GraphCanvas({
     });
 
     const sigma = new Sigma(graph, containerRef.current, {
+      enableEdgeEvents: true,
       renderEdgeLabels: false,
       labelFont: "IBM Plex Sans, sans-serif",
       labelSize: 13,
@@ -140,6 +143,18 @@ export function GraphCanvas({
             );
           onGroupClick(community, groupNodeIds);
         }
+      });
+    }
+
+    if (onEdgeClick) {
+      sigma.on("enterEdge", () => {
+        containerRef.current!.style.cursor = "pointer";
+      });
+      sigma.on("leaveEdge", () => {
+        containerRef.current!.style.cursor = "default";
+      });
+      sigma.on("clickEdge", ({ edge }) => {
+        onEdgeClick(...graph.extremities(edge));
       });
     }
 
