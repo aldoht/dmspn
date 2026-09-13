@@ -7,6 +7,7 @@ import { Empresa, Transaccion } from "@/lib/types";
 import { useGrafoOverview } from "../hooks/useGraphOverview";
 import { EnterpriseDetailPanel } from "./EnterpriseDetailPanel";
 import { RelationDetailPanel } from "./RelationDetailPanel";
+import { GroupedTransactionsPanel } from "./GroupedTransactionsPanel";
 
 const GraphCanvas = dynamic(
   () =>
@@ -39,6 +40,9 @@ export default function GraphPreviewPage() {
   const [relationTransactions, setRelationTransactions] = useState<
     Transaccion[]
   >([]);
+  const [detailTransactions, setDetailTransactions] = useState<Transaccion[]>(
+    [],
+  );
   const { nodes, edges, loading, error, refetch } = useGrafoOverview(240);
   const commonClasses =
     "rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:text-white hover:bg-brand hover:cursor-pointer";
@@ -156,10 +160,25 @@ export default function GraphPreviewPage() {
             </>
           )
         ) : (
-          <GroupDetailGraph
-            empresas={empresasGrupo}
-            transacciones={transaccionesGrupo}
-          />
+          <>
+            <GroupDetailGraph
+              empresas={empresasGrupo}
+              transacciones={transaccionesGrupo}
+              onTransaccionClick={(transaccionId) => {
+                const transaccion = transaccionesGrupo.find(
+                  (t) => t.id === transaccionId,
+                );
+                if (transaccion) setDetailTransactions([transaccion]);
+              }}
+              onVerTransaccionesAgrupadas={(transacciones) =>
+                setDetailTransactions(transacciones)
+              }
+            />
+            <GroupedTransactionsPanel
+              transacciones={detailTransactions}
+              onClose={() => setDetailTransactions([])}
+            />
+          </>
         )}
       </div>
     </div>

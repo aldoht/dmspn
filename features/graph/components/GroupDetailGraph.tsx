@@ -1,24 +1,36 @@
 "use client";
 
 import { useMemo } from "react";
-import { ReactFlow, type Node, type Edge } from "@xyflow/react";
+import {
+  ReactFlow,
+  type Node,
+  type Edge,
+  useNodesState,
+  useEdgesState,
+  EdgeTypes,
+} from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useForceLayout } from "../hooks/useForceLayout";
 import { EmpresaNode } from "./EnterpriseNode";
 import { Empresa, EmpresaNodeData, Transaccion } from "@/lib/types";
+import { TransaccionEdge } from "./TransactionEdge";
 
 type GroupDetailGraphProps = {
   empresas: Empresa[];
   transacciones: Transaccion[];
   onTransaccionClick?: (transaccionId: string) => void;
+  onVerTransaccionesAgrupadas?: (transacciones: Transaccion[]) => void;
 };
 
 const nodeTypes = { empresa: EmpresaNode };
+const edgeTypes: EdgeTypes = { transaccion: TransaccionEdge };
+const MAX_ARISTAS_PARALELAS = 3;
 
 export function GroupDetailGraph({
   empresas,
   transacciones,
   onTransaccionClick,
+  onVerTransaccionesAgrupadas,
 }: GroupDetailGraphProps) {
   const nodeIds = useMemo(() => empresas.map((e) => e.id), [empresas]);
   const links = useMemo(
@@ -32,7 +44,7 @@ export function GroupDetailGraph({
 
   const positions = useForceLayout(nodeIds, links);
 
-  const nodes: Node<EmpresaNodeData>[] = useMemo(
+  const initialNodes: Node<EmpresaNodeData>[] = useMemo(
     () =>
       empresas.map((empresa) => ({
         id: empresa.id,
@@ -43,26 +55,80 @@ export function GroupDetailGraph({
     [empresas, positions],
   );
 
-  const edges: Edge[] = useMemo(
-    () =>
-      transacciones.map((t) => ({
-        id: t.id,
-        source: t.origenId,
-        target: t.destinoId,
-        label: `$${t.monto.toLocaleString()} — ${t.fecha}`,
-        style: { stroke: "#8E1F1F" },
-      })),
-    [transacciones],
-  );
+  const initialEdges: Edge[] = useMemo(() => {
+    const grupos = new Map<string, Transaccion[]>();
+    transacciones.forEach((t) => {
+      const key = `${t.origenId}->${t.destinoId}`;
+      if (!grupos.has(key)) grupos.set(key, []);
+      grupos.get(key)!.push(t);
+    });
+
+    const resultado: Edge[] = [];
+
+    grupos.forEach((txns, key) => {
+      const [origenId, destinoId] = key.split("->");
+
+      if (txns.length > MAX_ARISTAS_PARALELAS) {
+        const montoTotal = txns.reduce((sum, t) => sum + t.monto, 0);
+        resultado.push({
+          id: `grupo-${key}`,
+          source: origenId,
+          target: destinoId,
+          type: "transaccion",
+          data: {
+            label: `$${montoTotal.toLocaleString()} — ${txns.length} transacciones`,
+            curvature: 0.25,
+            esAgregada: true,
+            transacciones: txns,
+          },
+          style: { stroke: "#8E1F1F", strokeWidth: 3 },
+        });
+      } else {
+        txns.forEach((t, i) => {
+          const signo = i % 2 === 0 ? 1 : -1;
+          const curvature = signo * (0.15 + Math.floor(i / 2) * 0.2);
+          resultado.push({
+            id: t.id,
+            source: t.origenId,
+            target: t.destinoId,
+            type: "transaccion",
+            data: {
+              label: `$${t.monto.toLocaleString()} — ${t.fecha}`,
+              curvature,
+              esAgregada: false,
+            },
+            style: { stroke: "#8E1F1F" },
+          });
+        });
+      }
+    });
+
+    return resultado;
+  }, [transacciones]);
+
+  const [nodes, setNodes, onNodeChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgeChange] = useEdgesState(initialEdges);
+
+  const handleEdgeClick = (_: unknown, edge: Edge) => {
+    if (edge.data?.esAgregada) {
+      onVerTransaccionesAgrupadas?.(edge.data.transacciones as Transaccion[]);
+    } else {
+      onVerTransaccionesAgrupadas?.([]);
+      onTransaccionClick?.(edge.id);
+    }
+  };
 
   return (
     <div className="h-full w-full">
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onNodesChange={onNodeChange}
+        onEdgesChange={onEdgeChange}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
-        onEdgeClick={(_, edge) => onTransaccionClick?.(edge.id)}
+        onEdgeClick={handleEdgeClick}
       />
     </div>
   );
