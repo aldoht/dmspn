@@ -30,8 +30,26 @@ const auditSchema: Schema = {
       type: Type.STRING,
       description: "Next steps for the compliance team, in English",
     },
+    presenciaResumen: {
+      type: Type.STRING,
+      description: "2 to 3 sentence summary of the business online and social presence (audience size, posting activity per platform), in English",
+    },
+    coherenciaFinancieraVsInternet: {
+      type: Type.OBJECT,
+      properties: {
+        veredicto: {
+          type: Type.STRING,
+          description: "COHERENT, QUESTIONABLE or INCOHERENT",
+        },
+        explicacion: {
+          type: Type.STRING,
+          description: "Why the banking volume is or is not mathematically plausible given the online audience, in English",
+        },
+      },
+      required: ["veredicto", "explicacion"],
+    },
   },
-  required: ["nivelRiesgoDigital", "scoreIncoherencia", "justificacionResumida", "redFlags", "recomendacionAuditor"],
+  required: ["nivelRiesgoDigital", "scoreIncoherencia", "justificacionResumida", "redFlags", "recomendacionAuditor", "presenciaResumen", "coherenciaFinancieraVsInternet"],
 };
 
 // Deriva la ciudad desde el domicilio registrado para alimentar
@@ -203,6 +221,34 @@ async function generarDictamenConReintentos(prompt: string): Promise<{ dictamen:
   throw ultimoError;
 }
 
+// Formats one social platform with its profile metrics for the prompt.
+// Everything in English; handles/bios stay verbatim. Unknown metrics render
+// as "unknown" so Gemini can tell missing data apart from zero presence.
+type RedParaPrompt = {
+  encontrado?: boolean;
+  url?: string;
+  fragmentoGoogle?: string;
+  perfil?: {
+    handle?: string;
+    seguidores?: number | null;
+    seguidos?: number | null;
+    publicaciones?: number | null;
+    bio?: string | null;
+    verificada?: boolean | null;
+    categoria?: string | null;
+  } | null;
+} | null | undefined;
+
+function formatoRed(nombre: string, red: RedParaPrompt): string {
+  if (!red || !red.encontrado) return `- ${nombre}: No presence found.`;
+  const p = red.perfil;
+  const num = (v: number | null | undefined) => (v === null || v === undefined ? "unknown" : v.toLocaleString("en-US"));
+  const metricas = p
+    ? `handle @${p.handle ?? "unknown"}, followers ${num(p.seguidores)}, posts ${num(p.publicaciones)}, verified ${p.verificada === null || p.verificada === undefined ? "unknown" : p.verificada ? "YES" : "NO"}${p.categoria ? `, category ${p.categoria}` : ""}${p.bio ? `, bio: "${p.bio}"` : ""}`
+    : "profile metrics unavailable (discovery only)";
+  return `- ${nombre}: Found (${red.url}) - ${metricas} - Excerpt: "${red.fragmentoGoogle ?? ""}"`;
+}
+
 // Formats a directional top list for the prompt: "Name — $amount (n ops)".
 // Proper business names are kept verbatim (never translated).
 function formatoTop(items: { nombre: string; montoTotal: number; numTransacciones: number }[]): string {
@@ -281,14 +327,22 @@ export async function POST(request: Request) {
       - Review count: ${datosMaps.userRatingCount} reviews
       - Operational status: ${datosMaps.businessStatus}
 
-      --- SOCIAL MEDIA (REAL TIME VIA INDEXING) ---
-      - Instagram: ${datosRedes.instagram?.encontrado ? `Found (${datosRedes.instagram.url}) - Excerpt: "${datosRedes.instagram.fragmentoGoogle}"` : "No presence on Instagram"}
-      - Facebook: ${datosRedes.facebook?.encontrado ? `Found (${datosRedes.facebook.url}) - Excerpt: "${datosRedes.facebook.fragmentoGoogle}"` : "No presence on Facebook"}
-      - TikTok: ${datosRedes.tiktok?.encontrado ? `Found (${datosRedes.tiktok.url}) - Excerpt: "${datosRedes.tiktok.fragmentoGoogle}"` : "No presence on TikTok"}
+      --- SOCIAL MEDIA (REAL TIME, WITH PROFILE METRICS) ---
+      ${formatoRed("Instagram", datosRedes.instagram)}
+      ${formatoRed("Facebook", datosRedes.facebook)}
+      ${formatoRed("TikTok", datosRedes.tiktok)}
 
       Evaluate: business-line vs volume/ticket coherence, registered address vs
       Maps address, operated volume vs reviews and social presence,
       and concentration in few counterparties as a risk signal.
+      Mathematical plausibility check (required): compare the 60-day banking
+      volume (inflows, outflows, average ticket, operation count) against the
+      online audience (followers, post volume, reviews). A business moving
+      large amounts with no profiles, ~0 followers and no reviews is
+      INCOHERENT; modest volume with an active audience is COHERENT.
+      Distinguish "unknown" metrics (no data) from zero presence, and say
+      which one applies. Report this in presenciaResumen and
+      coherenciaFinancieraVsInternet.
     `;
 
     // 4. Dictamen con Gemini (recorre la cadena de modelos hasta responder).
@@ -363,10 +417,14 @@ async function auditarConDatosManuales(datosFinancieros: DatosFinancierosManuale
       - Review count: ${datosMaps.userRatingCount} reviews
       - Operational status: ${datosMaps.businessStatus}
 
-      --- SOCIAL MEDIA (REAL-TIME DATA VIA INDEXING) ---
-      - Instagram: ${datosRedes.instagram?.encontrado ? `Found (${datosRedes.instagram.url}) - Excerpt: "${datosRedes.instagram.fragmentoGoogle}"` : "No presence on Instagram"}
-      - Facebook: ${datosRedes.facebook?.encontrado ? `Found (${datosRedes.facebook.url}) - Excerpt: "${datosRedes.facebook.fragmentoGoogle}"` : "No presence on Facebook"}
-      - TikTok: ${datosRedes.tiktok?.encontrado ? `Found (${datosRedes.tiktok.url}) - Excerpt: "${datosRedes.tiktok.fragmentoGoogle}"` : "No presence on TikTok"}
+      --- SOCIAL MEDIA (REAL-TIME DATA, WITH PROFILE METRICS) ---
+      ${formatoRed("Instagram", datosRedes.instagram)}
+      ${formatoRed("Facebook", datosRedes.facebook)}
+      ${formatoRed("TikTok", datosRedes.tiktok)}
+
+      Mathematical plausibility check (required): compare the transacted
+      financial volume against the online audience (followers, post volume).
+      Report this in presenciaResumen and coherenciaFinancieraVsInternet.
     `;
 
   // Misma resiliencia que el flujo por RFC: cadena de modelos con failover.

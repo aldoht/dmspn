@@ -30,7 +30,29 @@ type AuditDictamen = {
   justificacionResumida?: string;
   redFlags?: string[];
   recomendacionAuditor?: string;
+  presenciaResumen?: string;
+  coherenciaFinancieraVsInternet?: {
+    veredicto?: string;
+    explicacion?: string;
+  };
 };
+
+type PerfilRed = {
+  handle?: string;
+  seguidores?: number | null;
+  seguidos?: number | null;
+  publicaciones?: number | null;
+  bio?: string | null;
+  verificada?: boolean | null;
+  categoria?: string | null;
+} | null;
+
+type RedSocial = {
+  encontrado?: boolean;
+  url?: string;
+  fragmentoGoogle?: string;
+  perfil?: PerfilRed;
+} | null;
 
 type RealtimeData = {
   googleMaps?: {
@@ -38,6 +60,11 @@ type RealtimeData = {
     rating?: number;
     userRatingCount?: number;
     direccion?: string;
+  };
+  redes?: {
+    instagram?: RedSocial;
+    facebook?: RedSocial;
+    tiktok?: RedSocial;
   };
 };
 
@@ -56,6 +83,43 @@ type AuditResponse = {
 
 function formatoMoneda(n: number) {
   return `$${Number(n ?? 0).toLocaleString("es-MX")}`;
+}
+
+function formatoNum(n: number | null | undefined) {
+  return n === null || n === undefined ? 'unknown' : Number(n).toLocaleString("en-US");
+}
+
+const COHERENCIA_BADGE: Record<string, string> = {
+  COHERENT: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+  QUESTIONABLE: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+  INCOHERENT: 'bg-red-500/20 text-red-400 border border-red-500/30',
+};
+
+// One platform row of the Social presence card: metrics from the SerpApi
+// profile engines when available, otherwise discovery data + snippet.
+// Proper names, bios and snippets render verbatim (never translated).
+function RedRow({ nombre, red }: { nombre: string; red?: RedSocial }) {
+  const perfil = red?.perfil ?? null;
+  return (
+    <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 space-y-1">
+      <p className="font-semibold text-slate-200">
+        {nombre}: {red?.encontrado ? 'Found' : 'Not found'}
+      </p>
+      {red?.encontrado && red?.url && (
+        <a href={red.url} target="_blank" rel="noreferrer" className="text-blue-400 break-all">
+          {red.url}
+        </a>
+      )}
+      {red?.encontrado && (
+        <p className="text-slate-400">
+          Followers: {formatoNum(perfil?.seguidores)} · Posts: {formatoNum(perfil?.publicaciones)} · Verified:{' '}
+          {perfil?.verificada === null || perfil?.verificada === undefined ? 'unknown' : perfil.verificada ? 'YES' : 'NO'}
+        </p>
+      )}
+      {perfil?.bio && <p className="text-slate-400 italic">&ldquo;{perfil.bio}&rdquo;</p>}
+      {red?.fragmentoGoogle && <p className="text-slate-500">{red.fragmentoGoogle}</p>}
+    </div>
+  );
 }
 
 function AgentContent() {
@@ -323,6 +387,39 @@ function AgentContent() {
               ))}
             </ul>
           </div>
+
+          {/* Social presence: profile metrics + Gemini verdict on whether the
+              banking volume makes mathematical sense against the audience */}
+          {(resultado.realtimeData?.redes || resultado.auditResult.presenciaResumen) && (
+            <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 text-xs space-y-3">
+              <h4 className="font-semibold text-slate-300">Social presence (real time):</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <RedRow nombre="Instagram" red={resultado.realtimeData?.redes?.instagram} />
+                <RedRow nombre="Facebook" red={resultado.realtimeData?.redes?.facebook} />
+                <RedRow nombre="TikTok" red={resultado.realtimeData?.redes?.tiktok} />
+              </div>
+              {resultado.auditResult.presenciaResumen && (
+                <p className="text-sm text-slate-200 bg-slate-900 p-3 rounded-lg border border-slate-800">
+                  {resultado.auditResult.presenciaResumen}
+                </p>
+              )}
+              {resultado.auditResult.coherenciaFinancieraVsInternet && (
+                <div className="flex flex-col gap-2">
+                  <span
+                    className={`self-start px-3 py-1 rounded-full text-xs font-bold ${
+                      COHERENCIA_BADGE[resultado.auditResult.coherenciaFinancieraVsInternet.veredicto ?? ''] ??
+                      'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                    }`}
+                  >
+                    {resultado.auditResult.coherenciaFinancieraVsInternet.veredicto ?? 'UNKNOWN'}
+                  </span>
+                  <p className="text-sm text-slate-300">
+                    {resultado.auditResult.coherenciaFinancieraVsInternet.explicacion}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Información de Google Maps Obtenida */}
           <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 text-xs space-y-2">
