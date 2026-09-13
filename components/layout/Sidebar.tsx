@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Bot,
   Building,
+  ChartLine,
   Hexagon,
   LucideIcon,
   ScanHeart,
@@ -18,10 +19,11 @@ type MenuItem = {
   icon: LucideIcon;
 };
 const menuItems: MenuItem[] = [
-  { name: "Graph", href: "/", icon: Hexagon },
+  { name: "Dashboard", href: "/", icon: ChartLine },
   { name: "Alerts", href: "/alerts", icon: AlertTriangle },
+  { name: "Overview", href: "/overview", icon: Hexagon },
   { name: "Enterprises", href: "/enterprises", icon: Building },
-  { name: "Agent", href: "/agent", icon: Bot },
+  { name: "Checker", href: "/checker", icon: Bot },
 ];
 
 export default function Sidebar() {
