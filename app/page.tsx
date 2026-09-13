@@ -1,3 +1,4 @@
+import { DashboardPage } from "@/features/dashboard/components/DashboardPage";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -10,6 +11,7 @@ export default function Home() {
       <h1 className="text-3xl font-display m-3">
         Dashboard
       </h1>
+      <DashboardPage />
     </div>
   );
 }

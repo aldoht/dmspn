@@ -2,14 +2,18 @@ export function Card({
   title,
   children,
 }: {
-  title: string;
+  title?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
-      <h2 className="mb-3 font-display text-lg font-semibold text-text-primary">
-        {title}
-      </h2>
+      {title ? (
+        <h2 className="mb-3 font-display text-lg font-semibold text-text-primary">
+          {title}
+        </h2>
+      ) : (
+        <></>
+      )}
       {children}
     </div>
   );
