@@ -357,3 +357,8 @@ function getClaveSemanaISO(fechaISO: string): string {
   const semana = 1 + Math.round((fecha.getTime() - primerJueves.getTime()) / (7 * 24 * 60 * 60 * 1000));
   return `${fecha.getUTCFullYear()}-W${String(semana).padStart(2, "0")}`;
 }
+
+
+export class CambioPorcentualVolumen {
+
+}
